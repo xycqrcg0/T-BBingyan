@@ -1,0 +1,29 @@
+{
+  "port": ":8787",
+
+  "postgres": {
+    "dsn": "host=localhost user=postgres password=123456 dbname=bbingyan port=3456 sslmode=disable"
+  },
+
+  "redis" : {
+    "addr": "localhost:6379"
+  },
+
+  "admin": {
+    "name": "default",
+    "password": "ThisIsDefaultAdminPassword"
+  },
+
+  "jwt": {
+    "key": "secret",
+    "exp": 120,
+    "skipper": ["/auth/login/v1","/auth/login/v2","/auth/login/code","/auth/register/code","/auth/register","/admin/login"],
+    "user": ["/follows/*","/posts/new","posts/del/:id","/likes/*","/comment/new","/comment/del/:id"],
+    "admin": ["/admin/login","admin/new","/admin/del","admin/tag","admin/post/del","admin/comment/del"]
+  },
+
+  "curd": {
+    "page-size": 20,
+    "tags": ["生活","学习","娱乐","游戏","科技","艺术","音乐","美食","运动"]
+  }
+}
