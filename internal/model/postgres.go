@@ -10,9 +10,18 @@ import (
 var DB *gorm.DB
 
 func newPostgres() {
-	db, err := gorm.Open(postgres.Open(config.Config.Postgres.Dsn), &gorm.Config{})
+	var db *gorm.DB
+	var err error
+	for i := 0; i < 10; i++ {
+		db, err = gorm.Open(postgres.Open(config.Config.Postgres.Dsn), &gorm.Config{})
+		if err != nil {
+			log.Warnf("%d Fail to connect to database", i)
+		} else {
+			break
+		}
+	}
 	if err != nil {
-		log.Fatalf("Fail to connect to postgres")
+		log.Fatalf("Fail to connect to database")
 	}
 	DB = db
 

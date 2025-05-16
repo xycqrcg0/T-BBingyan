@@ -65,7 +65,7 @@ func InitConfig() {
 	if addr := os.Getenv("REDIS_ADDR"); addr != "" {
 		Config.Redis.Addr = addr
 	}
-	if dsn := os.Getenv("PG_DSN"); dsn != "" {
+	if dsn := os.Getenv("POSTGRES_DSN"); dsn != "" {
 		Config.Postgres.Dsn = dsn
 	}
 }

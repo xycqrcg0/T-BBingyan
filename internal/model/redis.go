@@ -14,7 +14,15 @@ func newRedis() {
 		DB:       0,
 		Password: "",
 	})
-	if _, err := RedisDB.Ping().Result(); err != nil {
+	var err error
+	for i := 0; i < 10; i++ {
+		if _, err = RedisDB.Ping().Result(); err != nil {
+			log.Warnf("%d fail to connect to redis", i)
+		} else {
+			break
+		}
+	}
+	if err != nil {
 		log.Fatalf("Fail to init redis")
 	}
 	log.Infof("Finish initializing redis")
