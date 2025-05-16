@@ -1,0 +1,47 @@
+services:
+  backend:
+    build: .
+    environment:
+      REDIS_ADDR: redis:6379
+      POSTGRES_DSN: host=postgres user=wumi password=123456 dbname=bbingyan port=5432 sslmode=disable
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8787:8787"
+    networks:
+      - be-net
+
+  postgres:
+    image: postgres:13.21-alpine3.20
+    environment:
+      POSTGRES_USER: wumi
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: bbingyan
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - be-net
+
+  redis:
+    image: redis:alpine3.21
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - be-net
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  be-net:
+    driver: bridge
+
+
+

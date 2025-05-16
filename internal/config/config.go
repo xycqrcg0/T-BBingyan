@@ -1,7 +1,6 @@
 package config
 
 import (
-	"BBingyan/internal/global"
 	"BBingyan/internal/log"
 	"encoding/json"
 	"github.com/joho/godotenv"
@@ -59,9 +58,14 @@ func InitConfig() {
 	}
 	log.Infof("finish initializing config")
 
-	if err := godotenv.Load(); err != nil {
-		global.Errors.Fatalf("fail to load .env file")
-	}
+	_ = godotenv.Load()
 	Config.AuthorizationCode = os.Getenv("AUTH_CODE")
 	log.Warnf("exp:%d", Config.JWT.Exp)
+
+	if addr := os.Getenv("REDIS_ADDR"); addr != "" {
+		Config.Redis.Addr = addr
+	}
+	if dsn := os.Getenv("PG_DSN"); dsn != "" {
+		Config.Postgres.Dsn = dsn
+	}
 }
