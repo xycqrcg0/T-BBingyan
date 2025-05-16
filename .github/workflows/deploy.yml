@@ -23,7 +23,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{secrets.DOCKER_NAME}}/backend
+          images: ${{secrets.DOCKER_NAME}}/bbingyan
 
 
       - name: 构建镜像&&推送
