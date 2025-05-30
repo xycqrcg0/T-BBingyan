@@ -185,6 +185,9 @@ func AdminDeletePost(c echo.Context) error {
 			})
 		}
 	}
+	if err := model.DeletePostInES(id); err != nil {
+		log.Warnf("Fail to add post to es,id:%d,err:%s", id, err)
+	}
 	if _, err := model.DeleteCommentsByPost(id); err != nil {
 		log.Errorf("Fail to delete comments by pid,error:%v", err)
 		return c.JSON(http.StatusInternalServerError, &param.Response{

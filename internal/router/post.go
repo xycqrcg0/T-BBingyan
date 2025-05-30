@@ -12,5 +12,7 @@ func PostRouter(r *echo.Echo) {
 		post.DELETE("/del/:id", controller.DeletePost)
 		post.GET("/:email", controller.GetPostByEmail)
 		post.GET("", controller.GetPostByTag)
+		post.POST("/search", controller.SearchPost)
+		post.GET("/search/:id", controller.GetPostById)
 	}
 }

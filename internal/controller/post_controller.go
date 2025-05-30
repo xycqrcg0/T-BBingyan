@@ -26,18 +26,19 @@ func AddPost(c echo.Context) error {
 		})
 	}
 
-	j := false
-	for _, tag := range config.Config.Curd.Tags {
-		if tag == data.Tag {
-			j = true
-			break
+	if ok, err := model.CheckTag(data.Tag); err != nil || !ok {
+		if err != nil {
+			log.Errorf("Fail to read from postgres,error:%v", err)
+			return c.JSON(http.StatusInternalServerError, &param.Response{
+				Status: false,
+				Msg:    "Internal server",
+			})
+		} else {
+			return c.JSON(http.StatusBadRequest, &param.Response{
+				Status: false,
+				Msg:    "invalid tag",
+			})
 		}
-	}
-	if !j {
-		return c.JSON(http.StatusBadRequest, &param.Response{
-			Status: false,
-			Msg:    "Nonexistent tag",
-		})
 	}
 
 	if data.Title == "" || data.Content == "" {
@@ -61,6 +62,11 @@ func AddPost(c echo.Context) error {
 			Status: false,
 			Msg:    "Internal server",
 		})
+	}
+
+	if err := model.AddPostToES(newPost); err != nil {
+		//这个让admin知道就行？
+		log.Warnf("Fail to add post to es,id:%d,err:%s", newPost.ID, err)
 	}
 
 	return c.JSON(http.StatusCreated, &param.Response{
@@ -95,6 +101,10 @@ func DeletePost(c echo.Context) error {
 			Status: false,
 			Msg:    "Internal server error",
 		})
+	}
+
+	if err := model.DeletePostInES(id); err != nil {
+		log.Warnf("Fail to delete post in es,id:%d,err:%s", id, err)
 	}
 
 	return c.JSON(http.StatusOK, &param.Response{
@@ -304,5 +314,125 @@ func GetPostByTag(c echo.Context) error {
 		Status: true,
 		Msg:    "",
 		Data:   postsResponse,
+	})
+}
+
+func SearchPost(c echo.Context) error {
+	tag := c.QueryParam("tag")
+	query := c.QueryParam("query")
+	pageStr := c.QueryParam("page")
+	pageSizeStr := c.QueryParam("page-size")
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+	if page < 0 {
+		page = 0
+	}
+	if pageSize <= 0 {
+		pageSize = config.Config.Curd.SearchSize
+	}
+	order := c.QueryParam("order")
+	if order != "asc" {
+		order = "desc"
+	}
+
+	if ok, err := model.CheckTag(tag); err != nil || !ok {
+		if err != nil {
+			log.Errorf("Fail to read from postgres,error:%v", err)
+			return c.JSON(http.StatusInternalServerError, &param.Response{
+				Status: false,
+				Msg:    "Internal server",
+			})
+		} else {
+			return c.JSON(http.StatusBadRequest, &param.Response{
+				Status: false,
+				Msg:    "invalid tag",
+			})
+		}
+	}
+
+	posts, err := model.SearchPost(tag, query, order == "desc", page, pageSize)
+	if err != nil {
+		log.Errorf("Fail to search from es,err:%s", err)
+		return c.JSON(http.StatusInternalServerError, &param.Response{
+			Status: false,
+			Msg:    "Internal server",
+		})
+	}
+
+	postsRes := make([]param.SimplePostRes, 0)
+	for _, post := range posts {
+		postsRes = append(postsRes, param.SimplePostRes{
+			ID:      post.ID,
+			Title:   post.Title,
+			Content: post.Content,
+		})
+	}
+
+	return c.JSON(http.StatusOK, &param.Response{
+		Status: true,
+		Msg:    "",
+		Data:   postsRes,
+	})
+}
+
+func GetPostById(c echo.Context) error {
+	ids := c.Param("id")
+	id, _ := strconv.Atoi(ids)
+	if id <= 0 {
+		return c.JSON(http.StatusBadRequest, &param.Response{
+			Status: false,
+			Msg:    "Bad request",
+		})
+	}
+	post, err := model.GetPostById(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.JSON(http.StatusBadRequest, &param.Response{
+				Status: false,
+				Msg:    "Bad request",
+			})
+		} else {
+			log.Errorf("Fail to read from postgres,error:%v", err)
+			return c.JSON(http.StatusInternalServerError, &param.Response{
+				Status: false,
+				Msg:    "Internal server",
+			})
+		}
+	}
+
+	k1 := fmt.Sprintf("postlikes:%d", post.ID)
+	k2 := fmt.Sprintf("userlikes:%s", post.User.Email)
+	postlikes, e1 := model.RedisDB.Get(k1).Result()
+	if e1 == nil {
+		l, _ := strconv.Atoi(postlikes)
+		post.Likes = l
+	}
+	userlikes, e2 := model.RedisDB.Get(k2).Result()
+	if e2 == nil {
+		l, _ := strconv.Atoi(userlikes)
+		post.User.Likes = l
+	}
+
+	postResponse := param.PostResponse{
+		ID:        post.ID,
+		Title:     post.Title,
+		Tag:       post.Tag,
+		Content:   post.Content,
+		Likes:     post.Likes,
+		Replies:   post.Replies,
+		CreatedAt: post.CreatedAt,
+		User: param.UserLessInfoResponse{
+			Email:     post.User.Email,
+			Name:      post.User.Name,
+			Signature: post.User.Signature,
+			Likes:     post.User.Likes,
+			Follows:   post.User.Follows,
+		},
+	}
+
+	return c.JSON(http.StatusOK, &param.Response{
+		Status: true,
+		Msg:    "",
+		Data:   postResponse,
 	})
 }

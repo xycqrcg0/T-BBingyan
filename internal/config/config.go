@@ -29,8 +29,9 @@ type JwtConfig struct {
 }
 
 type CurdConfig struct {
-	PageSize int      `json:"page-size"`
-	Tags     []string `json:"tags"`
+	PageSize   int      `json:"page-size"`
+	SearchSize int      `json:"search-size"`
+	Tags       []string `json:"tags"`
 }
 
 type StructConfig struct {
@@ -60,7 +61,6 @@ func InitConfig() {
 
 	_ = godotenv.Load()
 	Config.AuthorizationCode = os.Getenv("AUTH_CODE")
-	log.Warnf("exp:%d", Config.JWT.Exp)
 
 	if addr := os.Getenv("REDIS_ADDR"); addr != "" {
 		Config.Redis.Addr = addr

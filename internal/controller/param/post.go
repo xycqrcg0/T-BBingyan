@@ -1,6 +1,8 @@
 package param
 
-import "time"
+import (
+	"time"
+)
 
 type PostRequest struct {
 	Title   string `json:"title"`
@@ -17,4 +19,10 @@ type PostResponse struct {
 	Replies   int                  `json:"replies"`
 	CreatedAt time.Time            `json:"created-at"`
 	User      UserLessInfoResponse `json:"user"`
+}
+
+type SimplePostRes struct {
+	ID      uint   `json:"id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }

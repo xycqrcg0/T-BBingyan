@@ -16,3 +16,9 @@ func CreateTag(tag *Tag) error {
 	err := DB.Model(&Tag{}).Create(tag).Error
 	return err
 }
+
+func CheckTag(tag string) (bool, error) {
+	var count int64
+	err := DB.Model(&Tag{}).Where("tag=?", tag).Count(&count).Error
+	return count > 0, err
+}

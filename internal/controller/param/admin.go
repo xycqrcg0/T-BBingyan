@@ -8,3 +8,7 @@ type AdminReq struct {
 type TagReq struct {
 	Tag string `json:"tag"`
 }
+
+type Email struct {
+	Content string `json:"content"`
+}
