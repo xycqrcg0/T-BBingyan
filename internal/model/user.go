@@ -35,9 +35,9 @@ func GetUserByEmail(email string) (*User, error) {
 	return user, err
 }
 
-func GetAllUsersInfo() ([]User, error) {
+func GetAllUsersInfo(page int, pageSize int) ([]User, error) {
 	users := make([]User, 0)
-	err := DB.Model(&User{}).Find(&users).Error
+	err := DB.Model(&User{}).Limit(pageSize).Offset(page * pageSize).Find(&users).Error
 
 	return users, err
 }

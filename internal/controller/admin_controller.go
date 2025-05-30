@@ -1,16 +1,22 @@
 package controller
 
 import (
+	"BBingyan/internal/config"
 	"BBingyan/internal/controller/param"
 	"BBingyan/internal/global"
 	"BBingyan/internal/log"
 	"BBingyan/internal/model"
 	"BBingyan/internal/util"
 	"errors"
+	"fmt"
+	"github.com/jordan-wright/email"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"net/http"
+	"net/smtp"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -272,5 +278,78 @@ func AdminDeleteComment(c echo.Context) error {
 	return c.JSON(http.StatusOK, &param.Response{
 		Status: true,
 		Msg:    "Delete comment successfully",
+	})
+}
+
+func AdminEmail(c echo.Context) error {
+	content := param.Email{}
+	if err := c.Bind(&content); err != nil {
+		return c.JSON(http.StatusBadRequest, &param.Response{
+			Status: false,
+			Msg:    "Invalid request",
+		})
+	}
+
+	var sum int64
+	failedEmail := make([]string, 0)
+	pageSize := 200
+	emailChannel := make([]chan model.User, 10)
+	for i := 0; i < 10; i++ {
+		emailChannel[i] = make(chan model.User, 100)
+	}
+	var mx sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go func(a int) {
+			for {
+				user := <-emailChannel[i]
+				if user.Email == "" { //把这个作为退出信号吧
+					wg.Done()
+					break
+				}
+				e := email.NewEmail()
+				e.From = "BBingyan <bbingyan@qq.com>"
+				e.To = []string{user.Email}
+				e.Subject = "每周精选"
+				con := fmt.Sprintf("你好，%s!\n", user.Name) + content.Content
+				e.Text = []byte(con)
+				err := e.Send("smtp.qq.com:25", smtp.PlainAuth("", "bbingyan@qq.com", config.Config.AuthorizationCode, "smtp.qq.com"))
+				if err != nil && err.Error() != "short response: \\u0000\\u0000\\u0000\\u001a\\u0000\\u0000\\u0000" {
+					log.Warnf("邮件(%s)发送失败,err:%s", user.Email, err.Error())
+					atomic.AddInt64(&sum, 1)
+					mx.Lock()
+					failedEmail = append(failedEmail, user.Email)
+					mx.Unlock()
+				} else {
+					log.Infof("邮件(%s)发送成功", user.Email)
+				}
+			}
+		}(i)
+	}
+
+	for page := 0; ; page++ {
+		users, err := model.GetAllUsersInfo(page, pageSize)
+		if err != nil {
+			log.Errorf("Fail to read postgres when page=%d,err:%s", page, err)
+		}
+		if len(users) == 0 {
+			break
+		}
+		for j, user := range users {
+			p := j % 10
+			emailChannel[p] <- user
+		}
+	}
+	end := model.User{}
+	for j := 0; j < 10; j++ {
+		emailChannel[j] <- end
+	}
+	wg.Wait()
+
+	return c.JSON(http.StatusOK, param.Response{
+		Status: true,
+		Msg:    fmt.Sprintf("%d封邮件发送失败", sum),
+		Data:   failedEmail,
 	})
 }

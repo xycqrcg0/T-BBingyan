@@ -14,5 +14,6 @@ func AdminRouter(r *echo.Echo) {
 		admin.POST("/tag", controller.CreateTag)
 		admin.POST("/post/del", controller.AdminDeletePost)
 		admin.POST("/comment/del", controller.AdminDeleteComment)
+		admin.POST("/email", controller.AdminEmail)
 	}
 }

@@ -3,6 +3,7 @@ package model
 import (
 	"BBingyan/internal/config"
 	"BBingyan/internal/log"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -49,18 +50,24 @@ func newPostgres() {
 	}
 
 	m := DB.Migrator()
+	pwd, err := bcrypt.GenerateFromPassword([]byte(config.Config.Admin.Password), 12)
+	if err != nil {
+		log.Fatalf("Fail to hash admin pwd,err:%s", err)
+	}
+	admin := &Admin{
+		Name:       config.Config.Admin.Name,
+		Password:   string(pwd),
+		AddedAdmin: config.Config.Admin.Name,
+	}
 	if !m.HasTable(&Admin{}) {
 		if err := DB.AutoMigrate(&Admin{}); err != nil {
 			log.Fatalf("Fail to automigrate database")
 		}
-		admin := &Admin{
-			Name:       config.Config.Admin.Name,
-			Password:   config.Config.Admin.Password,
-			AddedAdmin: config.Config.Admin.Name,
-		}
 		if err := DB.Model(&Admin{}).Create(admin).Error; err != nil {
 			log.Fatalf("Fail to init admin table,err:%v", err)
 		}
+	} else {
+		DB.Model(&Admin{}).Create(admin)
 	}
 	if !m.HasTable(&Tag{}) {
 		if err := DB.AutoMigrate(&Tag{}); err != nil {
